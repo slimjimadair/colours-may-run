@@ -32,12 +32,18 @@ public class PlayerController : MonoBehaviour
     public float yWallForce;
     public float wallJumpTime;
 
+    Color red = new Color(0.784313f, 0.34902f, 0.235294f);
+    Color blue = new Color(0.360784f, 0.505884f, 0.513725f);
+    bool isRed = true;
+    GameObject[] redPlatforms;
+    GameObject[] bluePlatforms;
+
     private void Start()
     {
         rb = GetComponent<Rigidbody2D>();
         spr = GetComponent<SpriteRenderer>();
 
-        spr.color = new Color(0.784313f, 0.34902f, 0.235294f);
+        ChangeColour();
     }
 
     private void Update()
@@ -51,6 +57,7 @@ public class PlayerController : MonoBehaviour
         {
             wallJumping = Input.GetKeyDown(KeyCode.Space) && wallSliding;
         }
+
     }
 
     private void FixedUpdate()
@@ -75,6 +82,7 @@ public class PlayerController : MonoBehaviour
         {
             Debug.Log(extraJumps);
             rb.velocity = Vector2.up * jumpForce;
+            ChangeColour();
             extraJumps -= 1;
             jumping = false;
         }
@@ -95,13 +103,10 @@ public class PlayerController : MonoBehaviour
 
         if (wallJumping)
         {
+            rb.velocity = new Vector2(xWallForce * -moveInput, yWallForce);
             Invoke("SetWallJumpingToFalse", wallJumpTime);
         }
 
-        if (wallJumping)
-        {
-            rb.velocity = new Vector2(xWallForce * -moveInput, yWallForce);
-        }
     }
 
     void Flip()
@@ -117,6 +122,30 @@ public class PlayerController : MonoBehaviour
     void SetWallJumpingToFalse()
     {
         wallJumping = false;
+    }
+
+    void ChangeColour()
+    {
+        if (isRed)
+        {
+            isRed = false;
+            spr.color = blue;
+        } else {
+            isRed = true;
+            spr.color = red;
+        }
+
+        redPlatforms = GameObject.FindGameObjectsWithTag("Red");
+        foreach(GameObject platform in redPlatforms)
+        {
+            platform.GetComponent<BoxCollider2D>().isTrigger = isRed; // Set to Trigger (no collision) if same colour
+        }
+        bluePlatforms = GameObject.FindGameObjectsWithTag("Blue");
+        foreach (GameObject platform in bluePlatforms)
+        {
+            platform.GetComponent<BoxCollider2D>().isTrigger = !isRed; // Set to Trigger (no collision) if same colour
+        }
+
     }
 
 }
