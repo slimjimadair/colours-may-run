@@ -4,16 +4,24 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
-    public float speed;
-    public float jumpForce;
-    float moveInput;
-
     Rigidbody2D rb;
     SpriteRenderer spr;
 
-    bool facingRight = true;
+    // Public settings
+    public float speed;
+    public float jumpForce;
 
+    // Controls
+    float moveInput;
+    float fixedMoveInput;
+    bool jumpInput;
+    bool fixedJumpInput;
+
+    // Context
+    bool facingRight = true;
     bool isGrounded;
+    bool isTouchingFront;
+
     public Transform groundCheck;
     public float checkRadius;
     public LayerMask whatIsGround;
@@ -22,21 +30,23 @@ public class PlayerController : MonoBehaviour
     public int numberOfJumps;
     int extraJumps;
 
-    bool isTouchingFront;
     public Transform frontCheck;
     bool wallSliding = false;
     public float wallSlidingSpeed;
 
-    bool wallJumping = false;
+    float wallJumping;
     public float xWallForce;
     public float yWallForce;
     public float wallJumpTime;
 
-    Color red = new Color(0.784313f, 0.34902f, 0.235294f);
-    Color blue = new Color(0.360784f, 0.505884f, 0.513725f);
+    // Colour Handling
+    Color32 red = new Color32(200, 89, 60, 255);
+    Color32 blue = new Color32(92, 129, 131, 255);
     bool isRed = true;
     GameObject[] redPlatforms;
+    float redDepth = 1f;
     GameObject[] bluePlatforms;
+    float blueDepth = 1f;
 
     private void Start()
     {
@@ -48,64 +58,73 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
-        if (!jumping)
-        {
-            jumping = Input.GetKeyDown(KeyCode.Space) && (extraJumps > 0 || isGrounded);
-        }
-
-        if (!wallJumping)
-        {
-            wallJumping = Input.GetKeyDown(KeyCode.Space) && wallSliding;
-        }
-
+        // Get Player Inputs
+        moveInput = Input.GetAxisRaw("Horizontal");
+        jumpInput = Input.GetKeyDown(KeyCode.Space) || jumpInput;
     }
 
     private void FixedUpdate()
     {
-        isGrounded = Physics2D.OverlapCircle(groundCheck.position, checkRadius, whatIsGround);
-        isTouchingFront = Physics2D.OverlapCircle(frontCheck.position, checkRadius, whatIsGround);
+        // Get Fixed Inputs
+        fixedMoveInput = moveInput;
+        if (jumpInput)
+        {
+            fixedJumpInput = true;
+            jumpInput = false;
+        }
 
-        moveInput = Input.GetAxisRaw("Horizontal");
-        rb.velocity = new Vector2(moveInput * speed, rb.velocity.y);
-
+        // Get Context
+        isGrounded = Physics2D.OverlapCircle(groundCheck.position, checkRadius, whatIsGround, 0f);
+        isTouchingFront = Physics2D.OverlapCircle(frontCheck.position, checkRadius, whatIsGround, 0f);
         if ((!facingRight && moveInput > 0) || (facingRight && moveInput < 0))
         {
             Flip();
         }
-
         if (isGrounded)
         {
             extraJumps = numberOfJumps;
         }
 
+        // Assess Actions
+        jumping = fixedJumpInput && extraJumps > 0;
+        if (fixedJumpInput && isTouchingFront)
+        {
+            wallJumping = fixedMoveInput;
+            jumping = false;
+            Invoke("SetWallJumpingToFalse", wallJumpTime);
+            ChangeColour();
+        }
+        Debug.Log(extraJumps);
+        wallSliding = isTouchingFront && !isGrounded && moveInput != 0;
+        fixedJumpInput = false;
+
+        // Set Velocity
+        float hVel = fixedMoveInput * speed;
+        if (wallJumping == fixedMoveInput && wallJumping != 0)
+        {
+            hVel = xWallForce * -fixedMoveInput;
+        } else {
+            wallJumping = 0;
+        }
+
+        float vVel = rb.velocity.y;
+        if (wallSliding)
+        {
+            vVel = Mathf.Clamp(rb.velocity.y, -wallSlidingSpeed, float.MaxValue);
+        }
         if (jumping)
         {
-            Debug.Log(extraJumps);
-            rb.velocity = Vector2.up * jumpForce;
+            vVel = jumpForce;
             ChangeColour();
             extraJumps -= 1;
             jumping = false;
         }
-
-        if (isTouchingFront && !isGrounded && moveInput != 0)
+        if (wallJumping != 0f)
         {
-            wallSliding = true;
-        }
-        else
-        {
-            wallSliding = false;
+            vVel = yWallForce;
         }
 
-        if (wallSliding)
-        {
-            rb.velocity = new Vector2(rb.velocity.x, Mathf.Clamp(rb.velocity.y, -wallSlidingSpeed, float.MaxValue));
-        }
-
-        if (wallJumping)
-        {
-            rb.velocity = new Vector2(xWallForce * -moveInput, yWallForce);
-            Invoke("SetWallJumpingToFalse", wallJumpTime);
-        }
+        rb.velocity = new Vector2(hVel, vVel);
 
     }
 
@@ -116,12 +135,12 @@ public class PlayerController : MonoBehaviour
         Scaler.x *= -1;
         transform.localScale = Scaler;
 
-        wallJumping = false; // Fix for "block" when bouncing off wall
+        wallJumping = 0; // Fix for "block" when bouncing off wall
     }
 
     void SetWallJumpingToFalse()
     {
-        wallJumping = false;
+        wallJumping = 0f;
     }
 
     void ChangeColour()
@@ -130,20 +149,31 @@ public class PlayerController : MonoBehaviour
         {
             isRed = false;
             spr.color = blue;
+            redDepth = 1f;
+            blueDepth = -1f;
         } else {
             isRed = true;
             spr.color = red;
+            redDepth = -1f;
+            blueDepth = 1f;
         }
 
         redPlatforms = GameObject.FindGameObjectsWithTag("Red");
-        foreach(GameObject platform in redPlatforms)
+        foreach (GameObject platform in redPlatforms)
         {
             platform.GetComponent<BoxCollider2D>().isTrigger = isRed; // Set to Trigger (no collision) if same colour
+            Vector3 Position = platform.transform.position;
+            Position.z = redDepth;
+            platform.transform.position = Position;
         }
+
         bluePlatforms = GameObject.FindGameObjectsWithTag("Blue");
         foreach (GameObject platform in bluePlatforms)
         {
             platform.GetComponent<BoxCollider2D>().isTrigger = !isRed; // Set to Trigger (no collision) if same colour
+            Vector3 Position = platform.transform.position;
+            Position.z = blueDepth;
+            platform.transform.position = Position;
         }
 
     }
