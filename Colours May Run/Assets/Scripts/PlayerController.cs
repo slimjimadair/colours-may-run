@@ -94,7 +94,6 @@ public class PlayerController : MonoBehaviour
             Invoke("SetWallJumpingToFalse", wallJumpTime);
             ChangeColour();
         }
-        Debug.Log(extraJumps);
         wallSliding = isTouchingFront && !isGrounded && moveInput != 0;
         fixedJumpInput = false;
 
