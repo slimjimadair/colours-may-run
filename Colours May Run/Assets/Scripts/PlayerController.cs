@@ -10,6 +10,7 @@ public class PlayerController : MonoBehaviour
     // Public settings
     public float speed;
     public float jumpForce;
+    public float deathFloor = -10f;
 
     // Controls
     float moveInput;
@@ -23,7 +24,7 @@ public class PlayerController : MonoBehaviour
     bool isTouchingFront;
 
     public Transform groundCheck;
-    public float checkRadius;
+    public float groundCheckRadius;
     public LayerMask whatIsGround;
 
     bool jumping = false;
@@ -31,6 +32,7 @@ public class PlayerController : MonoBehaviour
     int extraJumps;
 
     public Transform frontCheck;
+    public float frontCheckRadius;
     bool wallSliding = false;
     public float wallSlidingSpeed;
 
@@ -72,8 +74,8 @@ public class PlayerController : MonoBehaviour
         }
 
         // Get Context
-        isGrounded = Physics2D.OverlapCircle(groundCheck.position, checkRadius, whatIsGround, 0f);
-        isTouchingFront = Physics2D.OverlapCircle(frontCheck.position, checkRadius, whatIsGround, 0f);
+        isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, whatIsGround, 0f);
+        isTouchingFront = Physics2D.OverlapCircle(frontCheck.position, frontCheckRadius, whatIsGround, 0f);
         if ((!facingRight && moveInput > 0) || (facingRight && moveInput < 0))
         {
             Flip();
@@ -85,10 +87,12 @@ public class PlayerController : MonoBehaviour
 
         // Assess Actions
         jumping = fixedJumpInput && extraJumps > 0;
+        if (jumping) { Debug.Log(extraJumps); }
         if (fixedJumpInput && isTouchingFront)
         {
             wallJumping = fixedMoveInput;
             jumping = false;
+            extraJumps -= 1;
             Invoke("SetWallJumpingToFalse", wallJumpTime);
             ChangeColour();
         }
@@ -122,6 +126,12 @@ public class PlayerController : MonoBehaviour
         }
 
         rb.velocity = new Vector2(hVel, vVel);
+
+        // Reset if out of level
+        if (transform.position.y < deathFloor)
+        {
+            GameObject.Find("Game").GetComponent<Game>().Restart();
+        }
 
     }
 

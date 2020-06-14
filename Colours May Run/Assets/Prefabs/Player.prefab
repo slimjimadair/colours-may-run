@@ -240,7 +240,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_Sprite: {fileID: 21300000, guid: 1ab0da5e60ad5b541b53c6d263ee368e, type: 3}
-  m_Color: {r: 0.21176472, g: 0.24705884, b: 0.227451, a: 1}
+  m_Color: {r: 0.18823531, g: 0.21960786, b: 0.227451, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -264,13 +264,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   speed: 10
   jumpForce: 20
+  deathFloor: -10
   groundCheck: {fileID: 8127823599615165707}
-  checkRadius: 0.5
+  groundCheckRadius: 0
   whatIsGround:
     serializedVersion: 2
     m_Bits: 256
   numberOfJumps: 1
   frontCheck: {fileID: 8127823600289370497}
+  frontCheckRadius: 0.5
   wallSlidingSpeed: 2
   xWallForce: 20
   yWallForce: 20

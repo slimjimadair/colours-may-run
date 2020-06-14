@@ -1,6 +1,8 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
+using UnityEngine.SocialPlatforms;
 using UnityEngine.UI;
 
 public class Game : MonoBehaviour
@@ -17,10 +19,22 @@ public class Game : MonoBehaviour
     public GameObject highScoreUI;
     GameObject target;
     GameObject player;
+    GameObject platformContainer;
+    GameObject shadowContainer;
     public Text clockText;
     public Text levelText;
     public Text newTime;
     public Text bestTime;
+
+    // Level Handling
+    string levelPath;
+    string levelJsonStr;
+    LevelData levelData;
+    int totalLevels;
+    public GameObject grayPrefab;
+    public GameObject redPrefab;
+    public GameObject bluePrefab;
+    public GameObject shadowPrefab;
 
     // Control variables
     float playTime = 0f;
@@ -32,8 +46,19 @@ public class Game : MonoBehaviour
 
     private void Start()
     {
+        // Get level settings
+        levelPath = Application.dataPath + "/Data/levels.json";
+        levelJsonStr = File.ReadAllText(levelPath);
+        levelData = JsonUtility.FromJson<LevelData>(levelJsonStr);
+        totalLevels = levelData.levels.Length;
+
+        // Set up objects
         player = GameObject.FindGameObjectWithTag("Player");
         target = this.gameObject.transform.GetChild(0).gameObject;
+        platformContainer = GameObject.Find("Platforms");
+        shadowContainer = GameObject.Find("Shadows");
+
+        // Load start level
         LoadLevel(1);
     }
 
@@ -66,7 +91,7 @@ public class Game : MonoBehaviour
         // BACKSPACE for reset / replay level
         if (Input.GetKeyDown(KeyCode.Backspace))
         {
-            LoadLevel(levelNumber);
+            Restart();
         }
 
     }
@@ -76,23 +101,78 @@ public class Game : MonoBehaviour
     {
         // Set Level
         levelNumber = level;
+        if (levelNumber > totalLevels || levelNumber <= 0)
+        {
+            levelNumber = 1;
+        }
         levelText.text = "LEVEL " + levelNumber.ToString();
 
         // Manage Clock
         playTime = 0f;
         gameIsPaused = false;
         Time.timeScale = 1f;
-        bestTimeValue = PlayerPrefs.GetFloat("BestTime");
+        string bestTimePref = "BestTime" + level.ToString("000");
+        bestTimeValue = PlayerPrefs.GetFloat(bestTimePref);
         levelComplete = false;
 
         // Toggle UI
         pauseMenuUI.SetActive(false);
         highScoreUI.SetActive(false);
 
-        // Setup Level
+        // Clear Old Level
         Destroy(player);
+        foreach (Transform platform in platformContainer.transform)
+        {
+            GameObject.Destroy(platform.gameObject);
+        }
+        foreach (Transform shadow in shadowContainer.transform)
+        {
+            GameObject.Destroy(shadow.gameObject);
+        }
+
+        // Setup New Level
+        foreach (Platform platform in levelData.levels[levelNumber - 1].platforms)
+        {
+            GameObject platformPrefab;
+            switch(platform.c)
+            {
+                case "Gray":
+                    platformPrefab = grayPrefab;
+                    break;
+
+                case "Red":
+                    platformPrefab = redPrefab;
+                    break;
+
+                case "Blue":
+                    platformPrefab = bluePrefab;
+                    break;
+
+                default:
+                    platformPrefab = grayPrefab;
+                    break;
+            }
+            GameObject platformObject = Instantiate(platformPrefab, new Vector3(platform.x, platform.y, 0), Quaternion.identity);
+            platformObject.tag = platform.c;
+            platformObject.transform.SetParent(platformContainer.transform);
+            platformObject.transform.localScale = new Vector3(platform.w, platform.h, 1);
+
+            GameObject shadowObject = Instantiate(shadowPrefab, new Vector3(platform.x, platform.y, -1), Quaternion.identity);
+            shadowObject.transform.SetParent(shadowContainer.transform);
+            float angle = 3 * ((Mathf.RoundToInt(Random.value) * 2) - 1);
+            shadowObject.transform.Rotate(Vector3.back, angle);
+            float scaleModifier = Random.Range(1f, 1.1f);
+            shadowObject.transform.localScale = new Vector3(platform.w * scaleModifier, platform.h * scaleModifier, 1);
+        }
+        Target targetSetting = levelData.levels[levelNumber - 1].target;
+        target.transform.position = new Vector3(targetSetting.x, targetSetting.y, 0);
         player = Instantiate(playerPrefab, Vector3.zero, Quaternion.identity);
 
+    }
+
+    public void Restart()
+    {
+        LoadLevel(levelNumber);
     }
 
     void Pause()
@@ -122,11 +202,43 @@ public class Game : MonoBehaviour
             if (newTimeValue < bestTimeValue || bestTimeValue == 0)
             {
                 bestTime.text = "NEW RECORD!";
-                PlayerPrefs.SetFloat("BestTime", newTimeValue);
+                string bestTimePref = "BestTime" + levelNumber.ToString("000");
+                PlayerPrefs.SetFloat(bestTimePref, newTimeValue);
             } else {
                 bestTime.text = "RECORD: " + bestTimeValue.ToString("0.0");
             }
         }
+    }
+
+    [System.Serializable]
+    public class LevelData
+    {
+        public Level[] levels;
+    }
+
+    [System.Serializable]
+    public class Level
+    {
+        public int levelID;
+        public Target target;
+        public Platform[] platforms;
+    }
+
+    [System.Serializable]
+    public class Platform
+    {
+        public float x;
+        public float y;
+        public float h;
+        public float w;
+        public string c;
+    }
+
+    [System.Serializable]
+    public class Target
+    {
+        public float x;
+        public float y;
     }
 
 }
