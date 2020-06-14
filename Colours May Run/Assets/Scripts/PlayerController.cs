@@ -40,8 +40,6 @@ public class PlayerController : MonoBehaviour
     public float wallJumpTime;
 
     // Colour Handling
-    Color32 red = new Color32(200, 89, 60, 255);
-    Color32 blue = new Color32(92, 129, 131, 255);
     bool isRed = true;
     GameObject[] redPlatforms;
     float redDepth = 1f;
@@ -147,12 +145,12 @@ public class PlayerController : MonoBehaviour
         if (isRed)
         {
             isRed = false;
-            spr.color = blue;
+            spr.color = Game.blue;
             redDepth = 1f;
             blueDepth = -1f;
         } else {
             isRed = true;
-            spr.color = red;
+            spr.color = Game.red;
             redDepth = -1f;
             blueDepth = 1f;
         }
